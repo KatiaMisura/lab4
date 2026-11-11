@@ -1,0 +1,249 @@
+
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+
+
+typedef struct clan {
+    int koef;
+    int exp;
+    struct clan* sljedeci;
+} Clan;
+
+
+
+void dodaj(Clan** lista, int koef, int exp) {
+    if (koef == 0)
+        return;
+
+    Clan* tekuci = *lista;
+
+    
+    while (tekuci != NULL) {
+        if (tekuci->exp == exp) {
+            tekuci->koef += koef;
+            return;
+        }
+
+        tekuci = tekuci->sljedeci;
+    }
+
+    Clan* novi = (Clan*)malloc(sizeof(Clan));
+
+    if (novi == NULL) {
+        printf("Greska pri alokaciji memorije!\n");
+        return;
+    }
+
+    novi->koef = koef;
+    novi->exp = exp;
+    novi->sljedeci = *lista;
+    *lista = novi;
+}
+
+
+
+void sortiraj(Clan** lista) {
+    if (*lista == NULL)
+        return;
+
+    int zamjena;
+    Clan** tekuci;
+    Clan* prvi;
+    Clan* drugi;
+
+    do {
+        zamjena = 0;
+        tekuci = lista;
+
+        while (*tekuci != NULL && (*tekuci)->sljedeci != NULL) {
+            prvi = *tekuci;
+            drugi = prvi->sljedeci;
+
+            if (prvi->exp < drugi->exp) {
+                prvi->sljedeci = drugi->sljedeci;
+                drugi->sljedeci = prvi;
+                *tekuci = drugi;
+
+                zamjena = 1;
+                tekuci = &(drugi->sljedeci);
+            }
+            else {
+                tekuci = &(prvi->sljedeci);
+            }
+        }
+
+    } while (zamjena);
+}
+
+
+
+void ispisi(Clan* lista) {
+    int prvi = 1;
+
+    if (lista == NULL) {
+        printf("0\n");
+        return;
+    }
+
+    while (lista != NULL) {
+        if (lista->koef != 0) {
+
+            if (!prvi && lista->koef > 0)
+                printf(" + ");
+            else if (lista->koef < 0)
+                printf(" - ");
+
+            if (prvi && lista->koef < 0)
+                printf("-");
+
+            int k = abs(lista->koef);
+
+            if (lista->exp == 0)
+                printf("%d", k);
+            else if (lista->exp == 1) {
+                if (k != 1)
+                    printf("%d", k);
+
+                printf("x");
+            }
+            else {
+                if (k != 1)
+                    printf("%d", k);
+
+                printf("x^%d", lista->exp);
+            }
+
+            prvi = 0;
+        }
+
+        lista = lista->sljedeci;
+    }
+
+    if (prvi)
+        printf("0");
+
+    printf("\n");
+}
+
+
+
+void zbroji(Clan* p1, Clan* p2, Clan** rez) {
+    while (p1 != NULL) {
+        dodaj(rez, p1->koef, p1->exp);
+        p1 = p1->sljedeci;
+    }
+
+    while (p2 != NULL) {
+        dodaj(rez, p2->koef, p2->exp);
+        p2 = p2->sljedeci;
+    }
+
+    sortiraj(rez);
+}
+
+
+
+void pomnozi(Clan* p1, Clan* p2, Clan** rez) {
+    Clan* tekuci1 = p1;
+    Clan* tekuci2;
+
+    while (tekuci1 != NULL) {
+        tekuci2 = p2;
+
+        while (tekuci2 != NULL) {
+            int koef = tekuci1->koef * tekuci2->koef;
+            int exp = tekuci1->exp + tekuci2->exp;
+
+            dodaj(rez, koef, exp);
+
+            tekuci2 = tekuci2->sljedeci;
+        }
+
+        tekuci1 = tekuci1->sljedeci;
+    }
+
+    sortiraj(rez);
+}
+
+
+
+void ucitajIzDatoteke(Clan** p1, Clan** p2) {
+    FILE* dat;
+    int koef, exp;
+    int brojac = 0;
+
+    dat = fopen("polinomi.txt", "r");
+
+    if (dat == NULL) {
+        printf("Greska pri otvaranju datoteke!\n");
+        return;
+    }
+
+    while (fscanf(dat, "%d %d", &koef, &exp) == 2) {
+
+        brojac++;
+
+        if (brojac <= 4) {
+            dodaj(p1, koef, exp);
+        }
+        else {
+            dodaj(p2, koef, exp);
+        }
+    }
+
+    fclose(dat);
+}
+
+
+
+void obrisiListu(Clan** lista) {
+    Clan* tekuci;
+
+    while (*lista != NULL) {
+        tekuci = *lista;
+        *lista = (*lista)->sljedeci;
+        free(tekuci);
+    }
+}
+
+
+
+int main(void) {
+
+    Clan* head = NULL;
+
+    Clan* p1 = NULL;
+    Clan* p2 = NULL;
+    Clan* zbroj = NULL;
+    Clan* produkt = NULL;
+
+    (void)head;
+
+    ucitajIzDatoteke(&p1, &p2);
+
+    printf("Prvi polinom: ");
+    sortiraj(&p1);
+    ispisi(p1);
+
+    printf("Drugi polinom: ");
+    sortiraj(&p2);
+    ispisi(p2);
+
+    zbroji(p1, p2, &zbroj);
+
+    printf("\nZbroj polinoma: ");
+    ispisi(zbroj);
+
+    pomnozi(p1, p2, &produkt);
+
+    printf("Produkt polinoma: ");
+    ispisi(produkt);
+
+    obrisiListu(&p1);
+    obrisiListu(&p2);
+    obrisiListu(&zbroj);
+    obrisiListu(&produkt);
+
+    return 0;
+}
